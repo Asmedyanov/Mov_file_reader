@@ -2,6 +2,8 @@ from tkinter import filedialog as fd
 import cv2
 import numpy as np
 from matplotlib.pyplot import *
+import skimage
+import pandas as pd
 
 
 class MoveReader:
@@ -28,17 +30,30 @@ class MoveReader:
         self.blue_part = self.raw_array[:, :, :, 2]
         self.red_part = self.raw_array[:, :, :, 0]
         self.greed_part = self.raw_array[:, :, :, 1]
-        threashold = 254
-        particles_markers = (self.blue_part > 254) & (self.greed_part < threashold * 0.66) & (
-                self.red_part < threashold * 0.66)
+        threashold = 230
+        particles_markers = (self.blue_part > threashold) & (self.greed_part < threashold * 0.4) & (
+                self.red_part < threashold * 0.4)
         particle_frame_numbers_list = []
         paricle_frame_list = []
+        self.labels_list = []
+        labels_count_list = []
+        self.region_props_list = []
         for i, frame in enumerate(particles_markers):
             if frame.max() > 0:
                 particle_frame_numbers_list.append(i)
                 paricle_frame_list.append(frame)
+                labels, label_count = skimage.measure.label(frame,background=0, return_num=True)
+                #region_props = pd.DataFrame(skimage.measure.regionprops_table(labels))
+                #self.region_props_list.append(region_props)
+                self.labels_list.append(labels)
+                labels_count_list.append(label_count)
+        self.labels_count = np.array(labels_count_list)
+        self.particles_count = self.labels_count.sum()
+        self.particles_frequency = self.particles_count / self.frameCount * 25.0
         self.particle_frame_numers_array = np.array(particle_frame_numbers_list)
-        print(f'The video containce {self.particle_frame_numers_array.size} frames with traces')
+        print(f'The video contains {self.particle_frame_numers_array.size} frames with traces')
+        print(f'The video catches {self.particles_count} particles')
+        print(f'The video catches {self.particles_frequency} particles/second')
         self.particle_frame_array = np.array(paricle_frame_list)
 
     def init_figure(self):
@@ -54,8 +69,9 @@ class MoveReader:
                     self.frame_index + increment >= self.particle_frame_numers_array.size):
                 increment = 0
             self.frame_index += increment
-            self.ax.set_title(f"frame {self.particle_frame_numers_array[self.frame_index]}")
-            self.ax.imshow(self.particle_frame_array[self.frame_index])
+            self.ax.set_title(
+                f"frame {self.particle_frame_numers_array[self.frame_index]} has {self.labels_count[self.frame_index]} particles")
+            self.ax.imshow(self.labels_list[self.frame_index])
             draw()
 
         self.fig.canvas.mpl_connect('scroll_event', on_scroll)
