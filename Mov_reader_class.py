@@ -42,9 +42,9 @@ class MoveReader:
             if frame.max() > 0:
                 particle_frame_numbers_list.append(i)
                 paricle_frame_list.append(frame)
-                labels, label_count = skimage.measure.label(frame,background=0, return_num=True)
-                #region_props = pd.DataFrame(skimage.measure.regionprops_table(labels))
-                #self.region_props_list.append(region_props)
+                labels, label_count = skimage.measure.label(frame, background=0, return_num=True)
+                # region_props = pd.DataFrame(skimage.measure.regionprops_table(labels))
+                # self.region_props_list.append(region_props)
                 self.labels_list.append(labels)
                 labels_count_list.append(label_count)
         self.labels_count = np.array(labels_count_list)
@@ -57,11 +57,14 @@ class MoveReader:
         self.particle_frame_array = np.array(paricle_frame_list)
 
     def init_figure(self):
-        self.fig, self.ax = subplots()
-        self.ax.imshow(self.raw_array[0])
-        self.ax.set_title(f"frame {0}")
+        self.fig, self.ax = subplots(1, 2)
+        self.ax[1].imshow(self.labels_list[0])
+        self.ax[1].grid()
+        self.ax[0].grid()
+        self.ax[1].set_title(f"frame {0}")
         self.frame_index = 0
-        self.ax.axis('equal')
+
+        # self.ax.axis('equal')
 
         def on_scroll(event):
             increment = 1 if event.button == 'up' else -1
@@ -69,9 +72,11 @@ class MoveReader:
                     self.frame_index + increment >= self.particle_frame_numers_array.size):
                 increment = 0
             self.frame_index += increment
-            self.ax.set_title(
-                f"frame {self.particle_frame_numers_array[self.frame_index]} has {self.labels_count[self.frame_index]} particles")
-            self.ax.imshow(self.labels_list[self.frame_index])
+            self.ax[0].set_title(
+                f"frame {self.particle_frame_numers_array[self.frame_index]}")
+            self.ax[1].set_title(f"{self.labels_count[self.frame_index]} particles")
+            self.ax[1].imshow(self.labels_list[self.frame_index])
+            self.ax[0].imshow(self.raw_array[self.particle_frame_numers_array[self.frame_index]])
             draw()
 
         self.fig.canvas.mpl_connect('scroll_event', on_scroll)
