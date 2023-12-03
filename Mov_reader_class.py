@@ -4,19 +4,44 @@ from matplotlib.pyplot import *
 import skimage
 import pandas as pd
 import numpy as np
+import os
 
 threshold_red = 209
 threshold_green = 50
 threshold_blue = 50
+initialdir = "C:/Users/user/OneDrive - Technion/Desktop/НИКИТА-ANDERNACH"
 
 
 class MoveReader:
     def __init__(self):
         self.open_file()
+        self.save_report()
         self.init_figure()
 
+    def save_report(self):
+        file_name_split = self.filename.split('/')
+        file_name_short = file_name_split[-1].split('.')[-2]
+        file_dir = file_name_split[:-1]
+        self.file_dir = '/'.join(file_dir)
+        os.chdir(self.file_dir)
+        rep_dir = f'Report_{file_name_short}'
+        os.makedirs(rep_dir, exist_ok=True)
+        rep_text = open(f'{rep_dir}/report.txt', 'w')
+        rep_text.write(f'{file_name_short}\n')
+        rep_text.write(f'The video timing is {self.frameCount / 30.0} sec\n')
+        rep_text.write(f'The video contains {self.frameCount} frames\n')
+        rep_text.write(f'The video contains {self.particle_frame_numers_array.size} frames with traces\n')
+        rep_text.write(f'The video catches {self.particles_count} particles\n')
+        rep_text.write(f'The video catches {self.particles_frequency} particles/second\n')
+        rep_text.close()
+        frames_df = pd.DataFrame({
+            'Frame': self.particle_frame_numers_array,
+            'Particles': self.labels_count
+        })
+        frames_df.to_csv(f'{rep_dir}/Frame_particle_table.csv')
+
     def open_file(self):
-        self.filename = fd.askopenfilename(initialdir="C:/Users/user/OneDrive - Technion/Desktop/НИКИТА-ANDERNACH")
+        self.filename = fd.askopenfilename(initialdir=initialdir)
         cap = cv2.VideoCapture(self.filename)
         self.frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         self.frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
