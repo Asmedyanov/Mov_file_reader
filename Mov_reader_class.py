@@ -9,7 +9,7 @@ import os
 threshold_red = 209
 threshold_green = 50
 threshold_blue = 50
-initialdir = "C:/Users/user/OneDrive - Technion/Desktop/НИКИТА-ANDERNACH"
+initialdir = "C:/Users/Nikita Asmedianov/Desktop/НИКИТА-ANDERNACH"
 
 
 class MoveReader:
@@ -44,6 +44,7 @@ class MoveReader:
         self.filename = fd.askopenfilename(initialdir=initialdir)
         cap = cv2.VideoCapture(self.filename)
         self.frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.FPS = int(cap.get(cv2.CAP_PROP_FPS))
         self.frameWidth = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
         self.frameHeight = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -80,9 +81,9 @@ class MoveReader:
                 labels_count_list.append(label_count)
         self.labels_count = np.array(labels_count_list)
         self.particles_count = self.labels_count.sum()
-        self.particles_frequency = self.particles_count / self.frameCount * 30.0
+        self.particles_frequency = self.particles_count / self.frameCount * self.FPS
         self.particle_frame_numers_array = np.array(particle_frame_numbers_list)
-        print(f'The video timing is {self.frameCount / 30.0} sec')
+        print(f'The video timing is {self.frameCount / self.FPS} sec')
         print(f'The video contains {self.frameCount} frames')
         print(f'The video contains {self.particle_frame_numers_array.size} frames with traces')
         print(f'The video catches {self.particles_count} particles')
