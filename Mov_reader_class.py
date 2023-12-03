@@ -5,6 +5,10 @@ from matplotlib.pyplot import *
 import skimage
 import pandas as pd
 
+threashold_red = 209
+threashold_green = 50
+threashold_blue = 50
+
 
 class MoveReader:
     def __init__(self):
@@ -30,9 +34,9 @@ class MoveReader:
         self.blue_part = self.raw_array[:, :, :, 2]
         self.red_part = self.raw_array[:, :, :, 0]
         self.greed_part = self.raw_array[:, :, :, 1]
-        threashold = 209
-        particles_markers = (self.blue_part > threashold) & (self.greed_part < threashold * 0.4) & (
-                self.red_part < threashold * 0.4)
+
+        particles_markers = (self.blue_part > threashold_red) & (self.greed_part < threashold_green) & (
+                self.red_part < threashold_blue)
         particle_frame_numbers_list = []
         paricle_frame_list = []
         self.labels_list = []
@@ -51,7 +55,7 @@ class MoveReader:
         self.particles_count = self.labels_count.sum()
         self.particles_frequency = self.particles_count / self.frameCount * 30.0
         self.particle_frame_numers_array = np.array(particle_frame_numbers_list)
-        print(f'The video timing is {self.frameCount/30.0} sec')
+        print(f'The video timing is {self.frameCount / 30.0} sec')
         print(f'The video contains {self.frameCount} frames')
         print(f'The video contains {self.particle_frame_numers_array.size} frames with traces')
         print(f'The video catches {self.particles_count} particles')
@@ -65,6 +69,7 @@ class MoveReader:
         self.ax[0].grid()
         self.ax[1].set_title(f"frame {0}")
         self.frame_index = 0
+
         def on_scroll(event):
             increment = 1 if event.button == 'up' else -1
             if (self.frame_index + increment < 0) | (
@@ -78,5 +83,23 @@ class MoveReader:
             self.ax[0].imshow(self.raw_array[self.particle_frame_numers_array[self.frame_index]])
             draw()
 
+        def on_key_press(event):
+            increment = 0
+            if event.key in ['right', 'up']:
+                increment = 1
+            if event.key in ['left', 'down']:
+                increment = -1
+            if (self.frame_index + increment < 0) | (
+                    self.frame_index + increment >= self.particle_frame_numers_array.size):
+                increment = 0
+            self.frame_index += increment
+            self.ax[0].set_title(
+                f"frame {self.particle_frame_numers_array[self.frame_index]}")
+            self.ax[1].set_title(f"{self.labels_count[self.frame_index]} particles")
+            self.ax[1].imshow(self.labels_list[self.frame_index])
+            self.ax[0].imshow(self.raw_array[self.particle_frame_numers_array[self.frame_index]])
+            draw()
+
         self.fig.canvas.mpl_connect('scroll_event', on_scroll)
+        self.fig.canvas.mpl_connect('key_press_event', on_key_press)
         show()
