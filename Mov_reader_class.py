@@ -30,7 +30,7 @@ class MoveReader:
         self.blue_part = self.raw_array[:, :, :, 2]
         self.red_part = self.raw_array[:, :, :, 0]
         self.greed_part = self.raw_array[:, :, :, 1]
-        threashold = 230
+        threashold = 209
         particles_markers = (self.blue_part > threashold) & (self.greed_part < threashold * 0.4) & (
                 self.red_part < threashold * 0.4)
         particle_frame_numbers_list = []
@@ -49,8 +49,10 @@ class MoveReader:
                 labels_count_list.append(label_count)
         self.labels_count = np.array(labels_count_list)
         self.particles_count = self.labels_count.sum()
-        self.particles_frequency = self.particles_count / self.frameCount * 25.0
+        self.particles_frequency = self.particles_count / self.frameCount * 30.0
         self.particle_frame_numers_array = np.array(particle_frame_numbers_list)
+        print(f'The video timing is {self.frameCount/30.0} sec')
+        print(f'The video contains {self.frameCount} frames')
         print(f'The video contains {self.particle_frame_numers_array.size} frames with traces')
         print(f'The video catches {self.particles_count} particles')
         print(f'The video catches {self.particles_frequency} particles/second')
@@ -63,9 +65,6 @@ class MoveReader:
         self.ax[0].grid()
         self.ax[1].set_title(f"frame {0}")
         self.frame_index = 0
-
-        # self.ax.axis('equal')
-
         def on_scroll(event):
             increment = 1 if event.button == 'up' else -1
             if (self.frame_index + increment < 0) | (
