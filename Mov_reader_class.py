@@ -1,13 +1,13 @@
 from tkinter import filedialog as fd
 import cv2
-import numpy as np
 from matplotlib.pyplot import *
 import skimage
 import pandas as pd
+import numpy as np
 
-threashold_red = 209
-threashold_green = 50
-threashold_blue = 50
+threshold_red = 209
+threshold_green = 50
+threshold_blue = 50
 
 
 class MoveReader:
@@ -31,12 +31,14 @@ class MoveReader:
             fc += 1
         cap.release()
         self.raw_array = buf[:, 90:630, 90:1150]
-        self.blue_part = self.raw_array[:, :, :, 2]
-        self.red_part = self.raw_array[:, :, :, 0]
+        new_order = [2, 1, 0]
+        self.raw_array = self.raw_array[:, :, :, new_order]
+        self.blue_part = self.raw_array[:, :, :, 0]
+        self.red_part = self.raw_array[:, :, :, 2]
         self.greed_part = self.raw_array[:, :, :, 1]
 
-        particles_markers = (self.blue_part > threashold_red) & (self.greed_part < threashold_green) & (
-                self.red_part < threashold_blue)
+        particles_markers = (self.blue_part > threshold_red) & (self.greed_part < threshold_green) & (
+                self.red_part < threshold_blue)
         particle_frame_numbers_list = []
         paricle_frame_list = []
         self.labels_list = []
