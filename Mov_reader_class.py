@@ -14,9 +14,10 @@ initialdir = "C:/Users/Nikita Asmedianov/Desktop/НИКИТА-ANDERNACH"
 
 class MoveReader:
     def __init__(self):
-        self.open_file()
+        '''self.open_file()
         self.save_report()
-        self.init_figure()
+        self.init_figure()'''
+        self.scrolling()
 
     def save_report(self):
         file_name_split = self.filename.split('/')
@@ -57,6 +58,69 @@ class MoveReader:
         })
         particle_number_10_df.to_csv(f'{rep_dir}/particle_number_10_list.csv')
 
+    def scrolling(self):
+        self.filename = fd.askopenfilename(initialdir=initialdir)
+        self.cap = cv2.VideoCapture(self.filename)
+        self.frameCount = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.FPS = int(self.cap.get(cv2.CAP_PROP_FPS))
+        self.frameWidth = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.frameHeight = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.fc = 0
+        self.new_order = [2, 1, 0]
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.fc)
+        r, frame = self.cap.read()
+        self.frame = frame[:, :, self.new_order]
+        frame_clean = self.frame[50:670]
+        ax0_index_to_remove_small = np.concatenate([np.arange(127, 132), np.arange(489, 494)], dtype=int)
+        ax0_index_to_remove_big = np.concatenate([np.arange(23, 29), np.arange(585, 590)], dtype=int)
+        ax1_index_to_remove_small = np.concatenate([np.arange(318, 324), np.arange(959, 964)], dtype=int)
+        ax1_index_to_remove_big = np.concatenate([np.arange(79, 84), np.arange(1196, 1202)], dtype=int)
+        criteria_small = frame[ax0_index_to_remove_small, :, 0].mean()
+        criteria_big = frame[ax0_index_to_remove_big, :, 0].mean()
+        if criteria_small > criteria_big:
+            self.ax0_index_to_remove = ax0_index_to_remove_small
+            self.ax1_index_to_remove = ax1_index_to_remove_small
+        else:
+            self.ax0_index_to_remove = ax0_index_to_remove_big
+            self.ax1_index_to_remove = ax1_index_to_remove_big
+        frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
+        frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
+        self.frame_clean = frame_clean
+        self.fig, self.ax = subplots(1, 2)
+        self.ax[0].imshow(self.frame)
+        self.ax[1].imshow(self.frame_clean)
+        self.ax[1].grid()
+        self.ax[0].grid()
+        self.ax[1].set_title(f"frame {self.fc}")
+        self.frame_index = 0
+
+        def on_key_press(event):
+            increment = 0
+            if event.key in ['right', 'up']:
+                increment = 1
+            if event.key in ['left', 'down']:
+                increment = -1
+            if (self.fc + increment < 0) | (
+                    self.fc + increment >= self.frameCount):
+                increment = 0
+            self.fc += increment
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.fc)
+            r, frame = self.cap.read()
+            self.frame = frame[:, :, self.new_order]
+            frame_clean = self.frame[50:670]
+            frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
+            frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
+            self.frame_clean = frame_clean
+            self.ax[0].set_title(
+                f"frame {self.fc} with frame")
+            self.ax[1].set_title(f"frame {self.fc} no frame")
+            self.ax[1].imshow(self.frame_clean)
+            self.ax[0].imshow(self.frame)
+            draw()
+
+        self.fig.canvas.mpl_connect('key_press_event', on_key_press)
+        show()
+
     def open_file(self):
         self.filename = fd.askopenfilename(initialdir=initialdir)
         cap = cv2.VideoCapture(self.filename)
@@ -94,7 +158,7 @@ class MoveReader:
                 particle_frame_raw_list.append(raw_array)
             small_rep = fc * 10 // self.frameCount
             if small_rep > small_rep_old:
-                print(f'Process {small_rep*10} %')
+                print(f'Process {small_rep * 10} %')
                 small_rep_old = small_rep
             fc += 1
         cap.release()
