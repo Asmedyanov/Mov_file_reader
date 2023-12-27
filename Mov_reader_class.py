@@ -14,10 +14,62 @@ initialdir = "C:/Users/Nikita Asmedianov/Desktop/НИКИТА-ANDERNACH"
 
 class MoveReader:
     def __init__(self):
-        '''self.open_file()
-        self.save_report()
+        self.open_file()
+        self.show_current_frame()
+        self.make_report_folder()
+        #self.make_bin_file()
+        self.intensity_report_common()
+        '''self.save_report()
         self.init_figure()'''
-        self.scrolling()
+        # self.scrolling()
+
+    def make_report_folder(self):
+        file_name_split = self.filename.split('/')
+        file_name_short = file_name_split[-1].split('.')[-2]
+        file_dir = file_name_split[:-1]
+        self.file_dir = '/'.join(file_dir)
+        os.chdir(self.file_dir)
+        self.rep_dir = f'Report_{file_name_short}'
+        os.makedirs(self.rep_dir, exist_ok=True)
+
+    def make_bin_file(self):
+        bin_file = open(f'{self.rep_dir}/full.bin', 'ab')
+        for frame_index in range(self.frameCount):
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            r, frame = self.cap.read()
+            frame_clean = frame[self.top_limit:self.bottom_limit]
+            frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
+            frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
+            frame_clean = frame_clean.astype(np.int8)
+            frame_clean.tofile(bin_file)
+        bin_file.close()
+
+    def intensity_report_common(self):
+        intensity = np.zeros(self.frameCount)
+        for frame_index in range(self.frameCount):
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            r, frame = self.cap.read()
+            frame_clean = frame[self.top_limit:self.bottom_limit]
+            frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
+            frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
+            intensity[frame_index] = np.sum(frame_clean)
+        self.intenity = intensity / self.pixelCount
+        plot(self.intenity)
+        xlabel('frame number')
+        ylabel('AVG intensity')
+        title('Common intensity')
+        savefig(f'{self.rep_dir}/intensity_common.png')
+        self.intenity.tofile(f'{self.rep_dir}/intensity_common.csv',sep=',')
+        clf()
+
+    def show_current_frame(self):
+        self.fig, self.ax = subplots(1, 2)
+        self.ax[0].imshow(self.frame)
+        self.ax[1].imshow(self.frame_clean)
+        self.ax[1].grid()
+        self.ax[0].grid()
+        self.ax[1].set_title(f"frame {self.fc}")
+        show()
 
     def save_report(self):
         file_name_split = self.filename.split('/')
@@ -83,8 +135,8 @@ class MoveReader:
         else:
             self.ax0_index_to_remove = ax0_index_to_remove_big
             self.ax1_index_to_remove = ax1_index_to_remove_big'''
-        self.ax0_index_to_remove = np.concatenate([ax0_index_to_remove_small,ax0_index_to_remove_big],dtype=int)
-        self.ax1_index_to_remove = np.concatenate([ax1_index_to_remove_small,ax1_index_to_remove_big],dtype=int)
+        self.ax0_index_to_remove = np.concatenate([ax0_index_to_remove_small, ax0_index_to_remove_big], dtype=int)
+        self.ax1_index_to_remove = np.concatenate([ax1_index_to_remove_small, ax1_index_to_remove_big], dtype=int)
         frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
         frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
         self.frame_clean = frame_clean
@@ -109,7 +161,8 @@ class MoveReader:
             self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.fc)
             r, frame = self.cap.read()
             self.frame = frame[:, :, self.new_order]
-            frame_clean = self.frame[50:670]
+
+            frame_clean = self.frame[self.top_limit:self.bottom_limit]
             frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
             frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
             self.frame_clean = frame_clean
@@ -124,6 +177,32 @@ class MoveReader:
         show()
 
     def open_file(self):
+        self.filename = fd.askopenfilename(initialdir=initialdir)
+        self.cap = cv2.VideoCapture(self.filename)
+        self.frameCount = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.FPS = int(self.cap.get(cv2.CAP_PROP_FPS))
+        self.frameWidth = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.frameHeight = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.pixelCount = self.frameWidth * self.frameHeight
+        self.fc = 0
+        self.new_order = [2, 1, 0]
+        self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.fc)
+        r, frame = self.cap.read()
+        self.frame = frame[:, :, self.new_order]
+        self.top_limit = 50
+        self.bottom_limit = 670
+        frame_clean = self.frame[self.top_limit:self.bottom_limit]
+        ax0_index_to_remove_small = np.concatenate([np.arange(127, 132), np.arange(489, 494)], dtype=int)
+        ax0_index_to_remove_big = np.concatenate([np.arange(23, 29), np.arange(585, 590)], dtype=int)
+        ax1_index_to_remove_small = np.concatenate([np.arange(318, 324), np.arange(959, 964)], dtype=int)
+        ax1_index_to_remove_big = np.concatenate([np.arange(79, 84), np.arange(1196, 1202)], dtype=int)
+        self.ax0_index_to_remove = np.concatenate([ax0_index_to_remove_small, ax0_index_to_remove_big], dtype=int)
+        self.ax1_index_to_remove = np.concatenate([ax1_index_to_remove_small, ax1_index_to_remove_big], dtype=int)
+        frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
+        frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
+        self.frame_clean = frame_clean
+
+    def open_file_old(self):
         self.filename = fd.askopenfilename(initialdir=initialdir)
         cap = cv2.VideoCapture(self.filename)
         self.frameCount = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
