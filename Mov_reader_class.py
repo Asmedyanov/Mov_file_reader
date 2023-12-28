@@ -1,5 +1,6 @@
 from tkinter import filedialog as fd
 import cv2
+import matplotlib.pyplot as plt
 from matplotlib.pyplot import *
 import skimage
 import pandas as pd
@@ -9,19 +10,120 @@ import os
 threshold_red = 209
 threshold_green = 50
 threshold_blue = 50
+threshold_area = 3  # pix
 initialdir = "C:/Users/Nikita Asmedianov/Desktop/НИКИТА-ANDERNACH"
 
 
 class MoveReader:
     def __init__(self):
         self.open_file()
+        # self.scrolling()
         self.show_current_frame()
         self.make_report_folder()
-        #self.make_bin_file()
-        self.intensity_report_common()
-        '''self.save_report()
-        self.init_figure()'''
-        # self.scrolling()
+        self.frame_by_frame_analysis()
+
+    def frame_by_frame_analysis(self):
+        intensity = np.zeros(self.frameCount)
+        self.new_order = [2, 1, 0]
+        self.frames_with_particle_list = []
+        self.frame_numbers_with_particle_list = []
+        self.frame_property_list = []  # number, number of particles
+        self.particle_property_df = pd.DataFrame(
+            columns=['Frame', 'Area', 'X', 'Y'])  # frame, x, y (in cleaned frame), radius
+        self.frame_current = 0
+        processed_part_previous = 0
+        for frame_index in range(self.frameCount):
+            self.cap.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            r, frame = self.cap.read()
+            frame_clean = frame[self.top_limit:self.bottom_limit, :, self.new_order].astype(np.uint8)
+            frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
+            frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
+            self.particle_analysis(frame_clean)
+            intensity[frame_index] = np.sum(frame_clean)
+            self.frame_current += 1
+            processed_part = int(self.frame_current * 100.0 / self.frameCount)
+            if processed_part > processed_part_previous:
+                print(f'Processed part is {processed_part} %')
+                processed_part_previous = processed_part
+        self.intenity = intensity / self.pixelCount
+        plot(self.intenity)
+        xlabel('frame number')
+        ylabel('AVG intensity')
+        title('Common intensity')
+        savefig(f'{self.rep_dir}/intensity_common.png')
+        self.intenity.tofile(f'{self.rep_dir}/intensity_common.csv', sep=',')
+        clf()
+        self.particle_property_df.to_csv(f'{self.rep_dir}/particle_properties.csv')
+        area_hist, area_bin = np.histogram(self.particle_property_df['Area'].values, bins=10)
+        x_hist, x_bin = np.histogram(self.particle_property_df['X'].values, bins=10)
+        y_hist, y_bin = np.histogram(self.particle_property_df['Y'].values, bins=10)
+        df_area = pd.DataFrame({
+            'Area_bin': area_bin[1:],
+            'Area_hist': area_hist,
+        })
+        df_x = pd.DataFrame({
+            'x_bin': x_bin[1:],
+            'x_hist': x_hist,
+        })
+        df_y = pd.DataFrame({
+            'y_bin': y_bin[1:],
+            'y_hist': y_hist,
+        })
+        df_area.to_csv(f'{self.rep_dir}/Histogram_area.csv')
+        df_x.to_csv(f'{self.rep_dir}/Histogram_x.csv')
+        df_y.to_csv(f'{self.rep_dir}/Histogram_y.csv')
+        fig, ax = subplots(ncols=3)
+        ax[0].set_title('Area histogram')
+        ax[1].set_title('X histogram')
+        ax[2].set_title('Y histogram')
+        ax[0].set_ylabel('Particles')
+        for axx in ax:
+            axx.set_xlabel('Pixels')
+        ax[0].hist(self.particle_property_df['Area'], bins=10)
+        ax[1].hist(self.particle_property_df['X'], bins=10)
+        ax[2].hist(self.particle_property_df['Y'], bins=10)
+        savefig(f'{self.rep_dir}/histogram.png')
+        plt.clf()
+
+    def particle_analysis(self, raw_array):
+        blue_part = raw_array[:, :, 1]
+        red_part = raw_array[:, :, 0]
+        greed_part = raw_array[:, :, 2]
+        particles_markers = ((red_part > threshold_red) & (greed_part < threshold_green) & (
+                blue_part < threshold_blue)).astype(np.uint8)
+        particles_markers_criteria = particles_markers.max()
+        if particles_markers_criteria > 0:
+            labels, label_count = skimage.measure.label(particles_markers, background=0, return_num=True)
+            properties_list = skimage.measure.regionprops(labels)
+            criteria = 0
+            for properties in properties_list:
+                local_criteria = int(properties.area > threshold_area)
+                criteria += local_criteria
+                if local_criteria == 0:
+                    continue
+                new_row = [
+                    self.frame_current,
+                    properties['area'],
+                    properties['centroid'][1],
+                    properties['centroid'][0]
+                ]
+
+                self.particle_property_df.loc[len(self.particle_property_df)] = new_row
+
+            if criteria == 0:
+                return
+            fig, ax = subplots(2)
+            ax[0].imshow(raw_array)
+            ax[1].imshow(labels, cmap='flag_r')
+            ax[0].grid()
+            ax[1].grid()
+            ax[0].set_ylabel(f'Original frame {self.frame_current}')
+            ax[1].set_ylabel(f'{label_count} particles')
+            tight_layout()
+            savefig(f'{self.particle_frame_dir}/frame_{self.frame_current}.png')
+            '''if label_count > 8:
+                show()'''
+            plt.clf()
 
     def make_report_folder(self):
         file_name_split = self.filename.split('/')
@@ -30,7 +132,9 @@ class MoveReader:
         self.file_dir = '/'.join(file_dir)
         os.chdir(self.file_dir)
         self.rep_dir = f'Report_{file_name_short}'
+        self.particle_frame_dir = f'{self.rep_dir}/particle_frames'
         os.makedirs(self.rep_dir, exist_ok=True)
+        os.makedirs(self.particle_frame_dir, exist_ok=True)
 
     def make_bin_file(self):
         bin_file = open(f'{self.rep_dir}/full.bin', 'ab')
@@ -59,7 +163,7 @@ class MoveReader:
         ylabel('AVG intensity')
         title('Common intensity')
         savefig(f'{self.rep_dir}/intensity_common.png')
-        self.intenity.tofile(f'{self.rep_dir}/intensity_common.csv',sep=',')
+        self.intenity.tofile(f'{self.rep_dir}/intensity_common.csv', sep=',')
         clf()
 
     def show_current_frame(self):
@@ -141,12 +245,14 @@ class MoveReader:
         frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
         self.frame_clean = frame_clean
         self.fig, self.ax = subplots(1, 2)
-        self.ax[0].imshow(self.frame)
-        self.ax[1].imshow(self.frame_clean)
+
+        self.ax[0].imshow(self.frame.swapaxes(0, 1))
+        self.ax[1].imshow(self.frame_clean.swapaxes(0, 1))
         self.ax[1].grid()
         self.ax[0].grid()
         self.ax[1].set_title(f"frame {self.fc}")
         self.frame_index = 0
+        tight_layout()
 
         def on_key_press(event):
             increment = 0
@@ -162,15 +268,15 @@ class MoveReader:
             r, frame = self.cap.read()
             self.frame = frame[:, :, self.new_order]
 
-            frame_clean = self.frame[self.top_limit:self.bottom_limit]
+            frame_clean = self.frame[50:670]
             frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
             frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
             self.frame_clean = frame_clean
             self.ax[0].set_title(
                 f"frame {self.fc} with frame")
             self.ax[1].set_title(f"frame {self.fc} no frame")
-            self.ax[1].imshow(self.frame_clean)
-            self.ax[0].imshow(self.frame)
+            self.ax[1].imshow(self.frame_clean.swapaxes(0, 1))
+            self.ax[0].imshow(self.frame.swapaxes(0, 1))
             draw()
 
         self.fig.canvas.mpl_connect('key_press_event', on_key_press)
