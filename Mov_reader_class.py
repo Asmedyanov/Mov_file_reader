@@ -162,7 +162,7 @@ class MoveReader:
             ax[0].imshow(raw_array)
             ax[1].imshow(labels, cmap='flag_r')
             ax[0].grid()
-            ax[1].grid()
+            #ax[1].grid()
             ax[0].set_ylabel(f'Original frame {self.frame_current}')
             ax[1].set_ylabel(f'{label_count} particles')
             tight_layout()
