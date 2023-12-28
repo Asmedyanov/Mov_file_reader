@@ -62,7 +62,7 @@ class MoveReader:
         title('Common intensity')
         tight_layout()
         savefig(f'{self.rep_dir}/intensity_common.png')
-        self.intenity.tofile(f'{self.rep_dir}/intensity_common.csv', sep=',')
+
         clf()
         self.particle_property_df.to_csv(f'{self.rep_dir}/particle_properties.csv')
         self.frame_df.to_csv(f'{self.rep_dir}/frame_with_particle_properties.csv')
@@ -146,17 +146,18 @@ class MoveReader:
                     properties['centroid'][1],
                     properties['centroid'][0]
                 ]
-                self.particle_property_df.loc[len(self.particle_property_df)] = new_row
-                new_row = [
-                    self.frame_current,
-                    self.frame_current / self.FPS,
-                    label_count,
-                    self.frame_avg_intensity_current
-                ]
-                self.frame_df.loc[len(self.frame_df)] = new_row
+
 
             if criteria == 0:
                 return
+            self.particle_property_df.loc[len(self.particle_property_df)] = new_row
+            new_row = [
+                self.frame_current,
+                self.frame_current / self.FPS,
+                label_count,
+                self.frame_avg_intensity_current
+            ]
+            self.frame_df.loc[len(self.frame_df)] = new_row
             fig, ax = subplots(2)
             ax[0].imshow(raw_array)
             ax[1].imshow(labels, cmap='flag_r')
