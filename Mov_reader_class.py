@@ -10,7 +10,7 @@ import os
 threshold_red = 209
 threshold_green = 50
 threshold_blue = 50
-threshold_area = 3  # pix
+threshold_area = 1  # pix
 initialdir = "C:/Users/Nikita Asmedianov/Desktop/НИКИТА-ANDERNACH"
 
 
@@ -29,7 +29,9 @@ class MoveReader:
         self.frame_numbers_with_particle_list = []
         self.frame_property_list = []  # number, number of particles
         self.particle_property_df = pd.DataFrame(
-            columns=['Frame', 'Area', 'X', 'Y'])  # frame, x, y (in cleaned frame), radius
+            columns=['Frame', 'Time', 'Area', 'X', 'Y'])  # frame, x, y (in cleaned frame), radius
+        self.frame_df = pd.DataFrame(
+            columns=['Frame', 'Time', 'Particles', 'Intensity'])
         self.frame_current = 0
         processed_part_previous = 0
         for frame_index in range(self.frameCount):
@@ -38,25 +40,40 @@ class MoveReader:
             frame_clean = frame[self.top_limit:self.bottom_limit, :, self.new_order].astype(np.uint8)
             frame_clean = np.delete(frame_clean, self.ax0_index_to_remove, axis=0)
             frame_clean = np.delete(frame_clean, self.ax1_index_to_remove, axis=1)
-            self.particle_analysis(frame_clean)
+
             intensity[frame_index] = np.sum(frame_clean)
+            self.frame_avg_intensity_current = intensity[frame_index] / self.pixelCount
+            self.particle_analysis(frame_clean)
             self.frame_current += 1
             processed_part = int(self.frame_current * 100.0 / self.frameCount)
             if processed_part > processed_part_previous:
                 print(f'Processed part is {processed_part} %')
                 processed_part_previous = processed_part
         self.intenity = intensity / self.pixelCount
+        intensity_df = pd.DataFrame({
+            'Frame': np.arange(self.frameCount),
+            'Time': np.arange(self.frameCount) / self.FPS,
+            'Intensity': self.intenity
+        })
+        intensity_df.to_csv(f'{self.rep_dir}/intensity_full_report.csv')
         plot(self.intenity)
         xlabel('frame number')
         ylabel('AVG intensity')
         title('Common intensity')
+        tight_layout()
         savefig(f'{self.rep_dir}/intensity_common.png')
         self.intenity.tofile(f'{self.rep_dir}/intensity_common.csv', sep=',')
         clf()
         self.particle_property_df.to_csv(f'{self.rep_dir}/particle_properties.csv')
-        area_hist, area_bin = np.histogram(self.particle_property_df['Area'].values, bins=10)
-        x_hist, x_bin = np.histogram(self.particle_property_df['X'].values, bins=10)
-        y_hist, y_bin = np.histogram(self.particle_property_df['Y'].values, bins=10)
+        self.frame_df.to_csv(f'{self.rep_dir}/frame_with_particle_properties.csv')
+        time_hist, time_bin = np.histogram(self.particle_property_df['Area'].values, bins=100)
+        area_hist, area_bin = np.histogram(self.particle_property_df['Area'].values, bins=30)
+        x_hist, x_bin = np.histogram(self.particle_property_df['X'].values, bins=30)
+        y_hist, y_bin = np.histogram(self.particle_property_df['Y'].values, bins=30)
+        df_time = pd.DataFrame({
+            'Time_bin': time_bin[1:],
+            'Time_hist': time_hist,
+        })
         df_area = pd.DataFrame({
             'Area_bin': area_bin[1:],
             'Area_hist': area_hist,
@@ -69,21 +86,42 @@ class MoveReader:
             'y_bin': y_bin[1:],
             'y_hist': y_hist,
         })
+        df_time.to_csv(f'{self.rep_dir}/Histogram_time.csv')
         df_area.to_csv(f'{self.rep_dir}/Histogram_area.csv')
         df_x.to_csv(f'{self.rep_dir}/Histogram_x.csv')
         df_y.to_csv(f'{self.rep_dir}/Histogram_y.csv')
-        fig, ax = subplots(ncols=3)
-        ax[0].set_title('Area histogram')
-        ax[1].set_title('X histogram')
-        ax[2].set_title('Y histogram')
-        ax[0].set_ylabel('Particles')
-        for axx in ax:
-            axx.set_xlabel('Pixels')
-        ax[0].hist(self.particle_property_df['Area'], bins=10)
-        ax[1].hist(self.particle_property_df['X'], bins=10)
-        ax[2].hist(self.particle_property_df['Y'], bins=10)
+        fig, ax = subplots(ncols=2, nrows=2)
+
+        ax[0, 0].set_title('Time histogram')
+        ax[0, 0].set_xlabel('Sec')
+        ax[0, 1].set_title('Area histogram')
+        ax[0, 1].set_xlabel('Pix')
+        ax[1, 0].set_title('X histogram')
+        ax[1, 0].set_xlabel('Pix')
+        ax[1, 1].set_title('Y histogram')
+        ax[1, 1].set_xlabel('Pix')
+        ax[0, 0].set_ylabel('Particles')
+        ax[1, 0].set_ylabel('Particles')
+        ax[0, 0].hist(self.particle_property_df['Time'], bins=100)
+        ax[0, 1].hist(self.particle_property_df['Area'], bins=30)
+        ax[1, 0].hist(self.particle_property_df['X'], bins=30)
+        ax[1, 1].hist(self.particle_property_df['Y'], bins=30)
+        tight_layout()
         savefig(f'{self.rep_dir}/histogram.png')
-        plt.clf()
+        clf()
+        close()
+
+        rep_text = open(f'{self.rep_dir}/report.txt', 'w')
+        rep_text.write(f'{self.file_name_short}\n')
+        rep_text.write(f'The video timing is {self.frameCount / self.FPS} sec\n')
+        rep_text.write(f'The video FPS is {self.FPS}\n')
+        rep_text.write(f'The video contains {self.frameCount} frames\n')
+        rep_text.write(f'The video contains {len(self.frame_df)} frames with traces\n')
+        rep_text.write(f'The video catches {len(self.particle_property_df)} particles\n')
+        rep_text.write(
+            f'The video catches {len(self.particle_property_df) * self.FPS / self.frameCount} particles/second\n')
+        rep_text.write(f'The video AVG intensity is {self.intenity.mean()}\n')
+        rep_text.close()
 
     def particle_analysis(self, raw_array):
         blue_part = raw_array[:, :, 1]
@@ -103,12 +141,19 @@ class MoveReader:
                     continue
                 new_row = [
                     self.frame_current,
+                    self.frame_current / self.FPS,
                     properties['area'],
                     properties['centroid'][1],
                     properties['centroid'][0]
                 ]
-
                 self.particle_property_df.loc[len(self.particle_property_df)] = new_row
+                new_row = [
+                    self.frame_current,
+                    self.frame_current / self.FPS,
+                    label_count,
+                    self.frame_avg_intensity_current
+                ]
+                self.frame_df.loc[len(self.frame_df)] = new_row
 
             if criteria == 0:
                 return
@@ -127,11 +172,11 @@ class MoveReader:
 
     def make_report_folder(self):
         file_name_split = self.filename.split('/')
-        file_name_short = file_name_split[-1].split('.')[-2]
+        self.file_name_short = file_name_split[-1].split('.')[-2]
         file_dir = file_name_split[:-1]
         self.file_dir = '/'.join(file_dir)
         os.chdir(self.file_dir)
-        self.rep_dir = f'Report_{file_name_short}'
+        self.rep_dir = f'Report_{self.file_name_short}'
         self.particle_frame_dir = f'{self.rep_dir}/particle_frames'
         os.makedirs(self.rep_dir, exist_ok=True)
         os.makedirs(self.particle_frame_dir, exist_ok=True)
