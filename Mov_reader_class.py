@@ -55,17 +55,20 @@ class MoveReader:
             'Time': np.arange(self.frameCount) / self.FPS,
             'Intensity': self.intenity
         })
-        intensity_df.to_csv(f'{self.rep_dir}/intensity_full_report.csv')
+        intensity_df.to_excel(f'{self.rep_dir}/intensity_full_report_{self.file_name_short.split("-")[0]}.xlsx')
         plot(self.intenity)
         xlabel('frame number')
         ylabel('AVG intensity')
         title('Common intensity')
         tight_layout()
-        savefig(f'{self.rep_dir}/intensity_common.png')
+        savefig(f'{self.rep_dir}/intensity_common_{self.file_name_short.split("-")[0]}.png')
 
         clf()
-        self.particle_property_df.to_csv(f'{self.rep_dir}/particle_properties.csv')
-        self.frame_df.to_csv(f'{self.rep_dir}/frame_with_particle_properties.csv')
+        # self.particle_property_df.to_csv(f'{self.rep_dir}/particle_properties.csv')
+        self.particle_property_df.to_excel(
+            f'{self.rep_dir}/particle_properties_{self.file_name_short.split("-")[0]}.xlsx')
+        self.frame_df.to_excel(
+            f'{self.rep_dir}/frame_with_particle_properties_{self.file_name_short.split("-")[0]}.xlsx')
         time_hist, time_bin = np.histogram(self.particle_property_df['Area'].values, bins=100)
         area_hist, area_bin = np.histogram(self.particle_property_df['Area'].values, bins=30)
         x_hist, x_bin = np.histogram(self.particle_property_df['X'].values, bins=30)
@@ -86,10 +89,10 @@ class MoveReader:
             'y_bin': y_bin[1:],
             'y_hist': y_hist,
         })
-        df_time.to_csv(f'{self.rep_dir}/Histogram_time.csv')
-        df_area.to_csv(f'{self.rep_dir}/Histogram_area.csv')
-        df_x.to_csv(f'{self.rep_dir}/Histogram_x.csv')
-        df_y.to_csv(f'{self.rep_dir}/Histogram_y.csv')
+        df_time.to_excel(f'{self.rep_dir}/Histogram_time_{self.file_name_short.split("-")[0]}.xlsx')
+        df_area.to_excel(f'{self.rep_dir}/Histogram_area_{self.file_name_short.split("-")[0]}.xlsx')
+        df_x.to_excel(f'{self.rep_dir}/Histogram_x_{self.file_name_short.split("-")[0]}.xlsx')
+        df_y.to_excel(f'{self.rep_dir}/Histogram_y_{self.file_name_short.split("-")[0]}.xlsx')
         fig, ax = subplots(ncols=2, nrows=2)
 
         ax[0, 0].set_title('Time histogram')
@@ -107,11 +110,11 @@ class MoveReader:
         ax[1, 0].hist(self.particle_property_df['X'], bins=30)
         ax[1, 1].hist(self.particle_property_df['Y'], bins=30)
         tight_layout()
-        savefig(f'{self.rep_dir}/histogram.png')
+        savefig(f'{self.rep_dir}/histogram_{self.file_name_short.split("-")[0]}.png')
         clf()
         close()
 
-        rep_text = open(f'{self.rep_dir}/report.txt', 'w')
+        rep_text = open(f'{self.rep_dir}/report_{self.file_name_short.split("-")[0]}.txt', 'w')
         rep_text.write(f'{self.file_name_short}\n')
         rep_text.write(f'The video timing is {self.frameCount / self.FPS} sec\n')
         rep_text.write(f'The video FPS is {self.FPS}\n')
@@ -120,6 +123,8 @@ class MoveReader:
         rep_text.write(f'The video catches {len(self.particle_property_df)} particles\n')
         rep_text.write(
             f'The video catches {len(self.particle_property_df) * self.FPS / self.frameCount} particles/second\n')
+        rep_text.write(
+            f'The video catches {len(self.frame_df) * self.FPS / self.frameCount} frames with particles per second\n')
         rep_text.write(f'The video AVG intensity is {self.intenity.mean()}\n')
         rep_text.close()
 
@@ -136,6 +141,9 @@ class MoveReader:
             criteria = 0
             for properties in properties_list:
                 local_criteria = int(properties.area > threshold_area)
+                if local_criteria == 0:
+                    continue
+
                 criteria += local_criteria
                 if local_criteria == 0:
                     continue
@@ -146,11 +154,11 @@ class MoveReader:
                     properties['centroid'][1],
                     properties['centroid'][0]
                 ]
-
+                self.particle_property_df.loc[len(self.particle_property_df)] = new_row
 
             if criteria == 0:
                 return
-            self.particle_property_df.loc[len(self.particle_property_df)] = new_row
+
             new_row = [
                 self.frame_current,
                 self.frame_current / self.FPS,
@@ -160,9 +168,9 @@ class MoveReader:
             self.frame_df.loc[len(self.frame_df)] = new_row
             fig, ax = subplots(2)
             ax[0].imshow(raw_array)
-            ax[1].imshow(labels, cmap='flag_r')
+            ax[1].imshow(labels, cmap='gist_ncar_r')
             ax[0].grid()
-            #ax[1].grid()
+            # ax[1].grid()
             ax[0].set_ylabel(f'Original frame {self.frame_current}')
             ax[1].set_ylabel(f'{label_count} particles')
             tight_layout()
@@ -209,7 +217,12 @@ class MoveReader:
         ylabel('AVG intensity')
         title('Common intensity')
         savefig(f'{self.rep_dir}/intensity_common.png')
-        self.intenity.tofile(f'{self.rep_dir}/intensity_common.csv', sep=',')
+        intensity_df = pd.DataFrame({
+            'Time': np.arange(self.frameCount)/self.FPS,
+            'Intensity':self.intenity
+        })
+        intensity_df.to_excel(f'{self.rep_dir}/intensity_common_{self.file_name_short.split("-")[0]}.xlsx')
+        #self.intenity.tofile(f'{self.rep_dir}/intensity_common_{self.file_name_short.split("-")[0]}.csv', sep=',')
         clf()
 
     def show_current_frame(self):
