@@ -125,6 +125,8 @@ class MoveReader:
             f'The video catches {len(self.particle_property_df) * self.FPS / self.frameCount} particles/second\n')
         rep_text.write(
             f'The video catches {len(self.frame_df) * self.FPS / self.frameCount} frames with particles per second\n')
+        rep_text.write(
+            f'The avg area of particles is {self.particle_property_df["Area"].maen()} pix\n')
         rep_text.write(f'The video AVG intensity is {self.intenity.mean()}\n')
         rep_text.close()
 
