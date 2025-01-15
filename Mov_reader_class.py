@@ -10,7 +10,7 @@ import os
 threshold_red = 209
 threshold_green = 50
 threshold_blue = 50
-threshold_area = 1  # pix
+threshold_area = 1  # pix -- ПОРОГ ПО ПЛОЩАДИ
 initialdir = "C:/Users/Nikita Asmedianov/Desktop/НИКИТА-ANDERNACH"
 
 
