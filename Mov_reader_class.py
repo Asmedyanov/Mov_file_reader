@@ -113,21 +113,53 @@ class MoveReader:
         savefig(f'{self.rep_dir}/histogram_{self.file_name_short.split("-")[0]}.png')
         clf()
         close()
-
-        rep_text = open(f'{self.rep_dir}/report_{self.file_name_short.split("-")[0]}.txt', 'w')
-        rep_text.write(f'{self.file_name_short}\n')
-        rep_text.write(f'The video timing is {self.frameCount / self.FPS} sec\n')
-        rep_text.write(f'The video FPS is {self.FPS}\n')
-        rep_text.write(f'The video contains {self.frameCount} frames\n')
-        rep_text.write(f'The video contains {len(self.frame_df)} frames with traces\n')
-        rep_text.write(f'The video catches {len(self.particle_property_df)} particles\n')
-        rep_text.write(
-            f'The video catches {len(self.particle_property_df) * self.FPS / self.frameCount} particles/second\n')
-        rep_text.write(
-            f'The video catches {len(self.frame_df) * self.FPS / self.frameCount} frames with particles per second\n')
-        rep_text.write(
-            f'The avg area of particles is {self.particle_property_df["Area"].maen()} pix\n')
-        rep_text.write(f'The video AVG intensity is {self.intenity.mean()}\n')
+        try:
+            rep_text = open(f'{self.rep_dir}/report_{self.file_name_short.split("-")[0]}.txt', 'w')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(f'{self.file_name_short}\n')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(f'The video timing is {self.frameCount / self.FPS:0.3} sec\n')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(f'The video FPS is {self.FPS}\n')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(f'The video contains {self.frameCount} frames\n')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(f'The video contains {len(self.frame_df)} frames with traces\n')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(f'The video catches {len(self.particle_property_df)} particles\n')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(
+                f'The video catches {len(self.particle_property_df) * self.FPS / self.frameCount:0.3} particles/second\n')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(
+                f'The video catches {len(self.frame_df) * self.FPS / self.frameCount:0.3} frames with particles per second\n')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(
+                f'The avg area of particles is {np.mean(self.particle_property_df["Area"].values):0.3} pix\n')
+        except Exception as ex:
+            print(ex)
+        try:
+            rep_text.write(f'The video AVG intensity is {self.intenity.mean():0.3}\n')
+        except Exception as ex:
+            print(ex)
         rep_text.close()
 
     def particle_analysis(self, raw_array):
